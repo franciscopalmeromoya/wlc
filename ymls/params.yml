@@ -1,0 +1,19 @@
+# Experiment parameters.
+T: 30  # in degrees Celsius
+
+# Define initial guess and boundaries
+Lc_lower: 0  # contour length lower bound in nm
+Lc_upper: 20000  # contour length upper bound in nm
+Lc: 5600  # expected contour length in nm
+
+Lp_lower: 0  # persistence length lower bound in nm
+Lp_upper: 100  # persistence length upper bound in nm
+Lp: 53  # expected persistence length in nm
+
+S_lower: 0  # stretch modulus lower bound in pN
+S_upper: 10000  # stretch modulus upper bound pN
+S: 1255  # expected stretch modulus in pN
+
+# Data fitting; check convergence
+min_delta: 0.01  # in nm; Stop fitting when increment in Lp is lower than min_delta
+max_iters: 20  # Stop fitting when reaching max_iters
