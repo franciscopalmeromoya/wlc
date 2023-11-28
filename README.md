@@ -75,7 +75,7 @@ df = model.fit(data, min_delta=params["min_delta"], max_iters=params["max_iters"
 # Plot results
 model.plot(data)
 ```
-<p>
+<p align="center">
 <img src="docs/output.png" width="50%">
 </p>
 
