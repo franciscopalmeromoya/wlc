@@ -31,7 +31,7 @@ Here's a simple example demonstrating how to use the library:
 import wlc
 
 # Odijk model
-model = wlc.fitting.fitting.WormLikeChain(model="odijk")
+model = wlc.fitting.WormLikeChain(model="odijk")
 ```
 ```console
 Odidjk worm-like chain model.
