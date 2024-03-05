@@ -106,6 +106,51 @@ def bouchiat(d : np.ndarray, kBT : float, Lc : float, Lp : float) -> np.ndarray:
     
     return (kBT/Lp)*(0.25/(1-d/Lc)**2 - 0.25 + d/Lc + corr)
 
+def ebouchiat(fdata : np.ndarray, kBT : float, Lc : float, Lp : float, S : float) -> np.ndarray:
+    r"""Modified Bouchiat et al. worm-like chain model with seventh order correction.
+
+    .. math::
+        F = \frac{k_BT}{L_p} \left[\frac{1}{4\left(1-\frac{d}{L_c}\right)^2}-\frac{1}{4}+\frac{d}{L_c} +\sum_{n=1}^7 \alpha_n \left(\frac{d}{L_c}\right)^n\right]
+
+    Parameters
+    ----------
+    d : array-like
+        Distance between end-points. Units: [um]
+    kBT : float
+        Boltzman contant times Temperature. Units: [pN*nm]
+    Lc : float 
+        Contour length. Units: [nm]
+    Lp : float
+        Persistance length. Units: [nm]
+    S : float
+        Stretch modulus. Units: [pN]
+
+    Outputs
+    -------
+    F : array-like
+        Required force to extend a worm-like chain. Units: [pN]
+
+    C. Bouchiat, M.D. Wang, J.-F. Allemand, T. Strick, S.M. Block, V. Croquette
+    Estimating the Persistence Length of a Worm-Like Chain Molecule from Force-Extension Measurements
+    Biophysical Journal
+    """
+    # Save data
+    d, F = fdata
+    # Transform units: [um] to [nm]
+    d = d*1000
+
+    # Compute normalized extension
+    l = d/Lc - F/S
+    
+    # Correction coefficients
+    alpha = np.array([-0.5164228, -2.737418, 16.07497, -38.87607, 39.49944, -14.17718])
+
+    # Compute correction
+    corr = 0
+    for n in range(len(alpha)): corr += alpha[n]*(l)**(n+2) 
+    
+    return (kBT/Lp)*(0.25/(1-l)**2 - 0.25 + l + corr)
+
 def odijk(F : np.ndarray, kBT : float, Lc : float, Lp : float, S : float) -> np.ndarray:
     r"""Odidjk worm-like chain model.
 

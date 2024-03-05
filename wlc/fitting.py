@@ -26,6 +26,8 @@ class WormLikeChain:
             self.func = wlc.models.odijk
         elif model == "eWLC":
             self.func = wlc.models.eWLC
+        elif model == "ebouchiat":
+            self.func = wlc.models.ebouchiat
         else:
             raise ValueError("Unknown fitting model. Available models are: 'WLC', 'bouchiat', and 'odijk'.")
         
@@ -61,7 +63,7 @@ class WormLikeChain:
         # Store DNA parameters
         self.fmodel.set_param_hint('Lc', value=params['Lc'], min=params['Lc_lower'], max=params['Lc_upper'])
         self.fmodel.set_param_hint('Lp', value=params['Lp'], min=params['Lp_lower'], max=params['Lp_upper'])
-        if (self.model == "odijk") or (self.model == "eWLC"):
+        if (self.model == "odijk") or (self.model == "eWLC") or ((self.model == "ebouchiat")):
             self.fmodel.set_param_hint('S', value=params['S'], min=params['S_lower'], max=params['S_upper'])
 
         # Create parameters
@@ -110,7 +112,7 @@ class WormLikeChain:
                 if self.model == "odijk":
                     self.result = self.fmodel.fit(d, self.fparams, F=F, method=method)
                     Lc, Lp, S, Chisqr = self.result.params['Lc'].value, self.result.params['Lp'].value, self.result.params['S'].value, self.result.chisqr
-                elif self.model == "eWLC":
+                elif (self.model == "eWLC") or (self.model == "ebouchiat"):
                     self.result = self.fmodel.fit(F, self.fparams, fdata=data, method=method)
                     Lc, Lp, S, Chisqr = self.result.params['Lc'].value, self.result.params['Lp'].value, self.result.params['S'].value, self.result.chisqr                   
                 else:
