@@ -33,6 +33,41 @@ def WLC(d : np.ndarray, kBT : float, Lc : float, Lp : float) -> np.ndarray:
     
     return (kBT/Lp)*(0.25/(1-d/Lc)**2 - 0.25 + d/Lc)
 
+def eWLC(fdata : tuple, kBT : float, Lc : float, Lp : float, S : float) -> np.ndarray:
+    r"""Modified worm-like chain model.
+
+    .. math::
+        F = \frac{k_BT}{L_p} \left[\frac{1}{4\left(1-\frac{d}{L_c} + \frac{F}{S}\right)^2}-\frac{1}{4}+\frac{d}{L_c} - \frac{F}{S}\right]
+
+    Parameters
+    ----------
+    data : tuple
+        Observations of distance [um] and force [pN], respectively.
+    kBT : float
+        Boltzman contant times Temperature. Units: [pN*nm]
+    Lc : float 
+        Contour length. Units: [nm]
+    Lp : float
+        Persistance length. Units: [nm]
+    S : float
+        Stretch modulus. Units: [pN]
+
+    Outputs
+    -------
+    F : array-like
+        Required force to extend a worm-like chain. Units: [pN]
+
+    Peijing Jeremy Wang, Andrei Chabes, Rocco Casagrande, X. Cindy Tian, Lars Thelander & Tim C. Huffaker (1997) 
+    Rnr4p, a Novel Ribonucleotide Reductase Small-Subunit Protein, Molecular and Cellular Biology, 17:10, 6114-6121, 
+    DOI: 10.1128/MCB.17.10.6114
+    """
+    # Save data
+    d, F = fdata
+    # Transform units: [um] to [nm]
+    d = d*1000
+    
+    return (kBT/Lp)*(0.25/(1-(d/Lc - F/S))**2 - 0.25 + (d/Lc - F/S))
+
 def bouchiat(d : np.ndarray, kBT : float, Lc : float, Lp : float) -> np.ndarray:
     r"""Bouchiat et al. worm-like chain model with seventh order correction.
 
