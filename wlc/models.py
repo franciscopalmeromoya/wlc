@@ -1,4 +1,5 @@
 """Worm-like chain models"""
+import lmfit
 import numpy as np
 
 def WLC(d : np.ndarray, kBT : float, Lc : float, Lp : float) -> np.ndarray:
@@ -33,7 +34,7 @@ def WLC(d : np.ndarray, kBT : float, Lc : float, Lp : float) -> np.ndarray:
     
     return (kBT/Lp)*(0.25/(1-d/Lc)**2 - 0.25 + d/Lc)
 
-def eWLC(fdata : tuple, kBT : float, Lc : float, Lp : float, S : float) -> np.ndarray:
+def extWLC(fparams : lmfit.Parameters, F : np.ndarray, d : np.ndarray) -> np.ndarray:
     r"""Modified worm-like chain model.
 
     .. math::
@@ -41,7 +42,7 @@ def eWLC(fdata : tuple, kBT : float, Lc : float, Lp : float, S : float) -> np.nd
 
     Parameters
     ----------
-    data : tuple
+    fdata : tuple
         Observations of distance [um] and force [pN], respectively.
     kBT : float
         Boltzman contant times Temperature. Units: [pN*nm]
@@ -61,12 +62,61 @@ def eWLC(fdata : tuple, kBT : float, Lc : float, Lp : float, S : float) -> np.nd
     Rnr4p, a Novel Ribonucleotide Reductase Small-Subunit Protein, Molecular and Cellular Biology, 17:10, 6114-6121, 
     DOI: 10.1128/MCB.17.10.6114
     """
-    # Save data
-    d, F = fdata
     # Transform units: [um] to [nm]
     d = d*1000
+    # Unpack parameters: extract .value attribute for each parameter
+    fparamsvals = fparams.valuesdict()
+    kBT = fparamsvals['kBT']
+    Lc = fparamsvals['Lc']
+    Lp = fparamsvals['Lp']
+    S = fparamsvals['S']
+
+    # Compute normalized extension
+    l = d/Lc - F/S
     
-    return (kBT/Lp)*(0.25/(1-(d/Lc - F/S))**2 - 0.25 + (d/Lc - F/S))
+    return (kBT/Lp)*(0.25/(1-l)**2 - 0.25 + l)
+
+def res_extWLC(fparams : lmfit.Parameters, F : np.ndarray, d : np.ndarray) -> np.ndarray:
+    r"""Modified worm-like chain model.
+
+    .. math::
+        res = F - \frac{k_BT}{L_p} \left[\frac{1}{4\left(1-\frac{d}{L_c} + \frac{F}{S}\right)^2}-\frac{1}{4}+\frac{d}{L_c} - \frac{F}{S}\right]
+
+    Parameters
+    ----------
+    fdata : tuple
+        Observations of distance [um] and force [pN], respectively.
+    kBT : float
+        Boltzman contant times Temperature. Units: [pN*nm]
+    Lc : float 
+        Contour length. Units: [nm]
+    Lp : float
+        Persistance length. Units: [nm]
+    S : float
+        Stretch modulus. Units: [pN]
+
+    Outputs
+    -------
+    F : array-like
+        Required force to extend a worm-like chain. Units: [pN]
+
+    Peijing Jeremy Wang, Andrei Chabes, Rocco Casagrande, X. Cindy Tian, Lars Thelander & Tim C. Huffaker (1997) 
+    Rnr4p, a Novel Ribonucleotide Reductase Small-Subunit Protein, Molecular and Cellular Biology, 17:10, 6114-6121, 
+    DOI: 10.1128/MCB.17.10.6114
+    """
+    # Transform units: [um] to [nm]
+    d = d*1000
+    # Unpack parameters: extract .value attribute for each parameter
+    fparamsvals = fparams.valuesdict()
+    kBT = fparamsvals['kBT']
+    Lc = fparamsvals['Lc']
+    Lp = fparamsvals['Lp']
+    S = fparamsvals['S']
+
+    # Compute normalized extension
+    l = d/Lc - F/S
+    
+    return F - (kBT/Lp)*(0.25/(1-l)**2 - 0.25 + l)
 
 def bouchiat(d : np.ndarray, kBT : float, Lc : float, Lp : float) -> np.ndarray:
     r"""Bouchiat et al. worm-like chain model with seventh order correction.
@@ -106,38 +156,47 @@ def bouchiat(d : np.ndarray, kBT : float, Lc : float, Lp : float) -> np.ndarray:
     
     return (kBT/Lp)*(0.25/(1-d/Lc)**2 - 0.25 + d/Lc + corr)
 
-def ebouchiat(fdata : np.ndarray, kBT : float, Lc : float, Lp : float, S : float) -> np.ndarray:
+def extbouchiat(fparams : lmfit.Parameters, F : np.ndarray, d : np.ndarray) -> np.ndarray:
     r"""Modified Bouchiat et al. worm-like chain model with seventh order correction.
 
     .. math::
-        F = \frac{k_BT}{L_p} \left[\frac{1}{4\left(1-\frac{d}{L_c}\right)^2}-\frac{1}{4}+\frac{d}{L_c} +\sum_{n=1}^7 \alpha_n \left(\frac{d}{L_c}\right)^n\right]
+        F = \frac{k_BT}{L_p} \left[\frac{1}{4\left(1-\frac{d}{L_c}+\frac{F}{S}\right)^2}-\frac{1}{4}+\frac{d}{L_c}-\frac{F}{S} +\sum_{n=1}^7 \alpha_n \left(\frac{d}{L_c} - \frac{F}{S} \right)^n\right]
 
     Parameters
     ----------
+    fparams : Parameters
+        Fitting parameters such as:
+            kBT : float
+                Boltzman contant times Temperature. Units: [pN*nm]
+            Lc : float 
+                Contour length. Units: [nm]
+            Lp : float
+                Persistance length. Units: [nm]
+            S : float
+                Stretch modulus. Units: [pN]
+    F : array-like
+        Required force to extend a worm-like chain. Units: [pN]
     d : array-like
         Distance between end-points. Units: [um]
-    kBT : float
-        Boltzman contant times Temperature. Units: [pN*nm]
-    Lc : float 
-        Contour length. Units: [nm]
-    Lp : float
-        Persistance length. Units: [nm]
-    S : float
-        Stretch modulus. Units: [pN]
+
 
     Outputs
     -------
-    F : array-like
-        Required force to extend a worm-like chain. Units: [pN]
+    residual : array-like
+        Residual to minimize for fitting. Units: [pN]
 
     C. Bouchiat, M.D. Wang, J.-F. Allemand, T. Strick, S.M. Block, V. Croquette
     Estimating the Persistence Length of a Worm-Like Chain Molecule from Force-Extension Measurements
     Biophysical Journal
     """
-    # Save data
-    d, F = fdata
     # Transform units: [um] to [nm]
     d = d*1000
+    # Unpack parameters: extract .value attribute for each parameter
+    fparamsvals = fparams.valuesdict()
+    kBT = fparamsvals['kBT']
+    Lc = fparamsvals['Lc']
+    Lp = fparamsvals['Lp']
+    S = fparamsvals['S']
 
     # Compute normalized extension
     l = d/Lc - F/S
@@ -150,6 +209,59 @@ def ebouchiat(fdata : np.ndarray, kBT : float, Lc : float, Lp : float, S : float
     for n in range(len(alpha)): corr += alpha[n]*(l)**(n+2) 
     
     return (kBT/Lp)*(0.25/(1-l)**2 - 0.25 + l + corr)
+
+def res_extbouchiat(fparams : lmfit.Parameters, F : np.ndarray, d : np.ndarray) -> np.ndarray:
+    r"""Modified Bouchiat et al. worm-like chain model with seventh order correction.
+
+    .. math::
+        F = \frac{k_BT}{L_p} \left[\frac{1}{4\left(1-\frac{d}{L_c}\right)^2}-\frac{1}{4}+\frac{d}{L_c} +\sum_{n=1}^7 \alpha_n \left(\frac{d}{L_c}\right)^n\right]
+
+    Parameters
+    ----------
+    F : array-like
+        Required force to extend a worm-like chain. Units: [pN]
+    d : array-like
+        Distance between end-points. Units: [um]
+    fparams : Parameters
+        Fitting parameters such as:
+            kBT : float
+                Boltzman contant times Temperature. Units: [pN*nm]
+            Lc : float 
+                Contour length. Units: [nm]
+            Lp : float
+                Persistance length. Units: [nm]
+            S : float
+                Stretch modulus. Units: [pN]
+
+    Outputs
+    -------
+    residual : array-like
+        Residual to minimize for fitting. Units: [pN]
+
+    C. Bouchiat, M.D. Wang, J.-F. Allemand, T. Strick, S.M. Block, V. Croquette
+    Estimating the Persistence Length of a Worm-Like Chain Molecule from Force-Extension Measurements
+    Biophysical Journal
+    """
+    # Transform units: [um] to [nm]
+    d = d*1000
+    # Unpack parameters: extract .value attribute for each parameter
+    fparamsvals = fparams.valuesdict()
+    kBT = fparamsvals['kBT']
+    Lc = fparamsvals['Lc']
+    Lp = fparamsvals['Lp']
+    S = fparamsvals['S']
+
+    # Compute normalized extension
+    l = d/Lc - F/S
+    
+    # Correction coefficients
+    alpha = np.array([-0.5164228, -2.737418, 16.07497, -38.87607, 39.49944, -14.17718])
+
+    # Compute correction
+    corr = 0
+    for n in range(len(alpha)): corr += alpha[n]*(l)**(n+2) 
+    
+    return F - (kBT/Lp)*(0.25/(1-l)**2 - 0.25 + l + corr)
 
 def odijk(F : np.ndarray, kBT : float, Lc : float, Lp : float, S : float) -> np.ndarray:
     r"""Odidjk worm-like chain model.

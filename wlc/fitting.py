@@ -24,12 +24,14 @@ class WormLikeChain:
             self.func = wlc.models.bouchiat
         elif model == "odijk":
             self.func = wlc.models.odijk
-        elif model == "eWLC":
-            self.func = wlc.models.eWLC
-        elif model == "ebouchiat":
-            self.func = wlc.models.ebouchiat
+        elif model == "extWLC":
+            self.func = wlc.models.extWLC
+            self.resfunc = wlc.models.res_extWLC
+        elif model == "extbouchiat":
+            self.func = wlc.models.extbouchiat
+            self.resfunc = wlc.models.res_extbouchiat
         else:
-            raise ValueError("Unknown fitting model. Available models are: 'WLC', 'bouchiat', and 'odijk'.")
+            raise ValueError("Unknown fitting model. Available models are: 'WLC', 'extWLC', 'bouchiat', 'extbouchiat' and 'odijk'.")
         
         # Create fitting model
         self.fmodel = lmfit.Model(self.func)
@@ -63,7 +65,7 @@ class WormLikeChain:
         # Store DNA parameters
         self.fmodel.set_param_hint('Lc', value=params['Lc'], min=params['Lc_lower'], max=params['Lc_upper'])
         self.fmodel.set_param_hint('Lp', value=params['Lp'], min=params['Lp_lower'], max=params['Lp_upper'])
-        if (self.model == "odijk") or (self.model == "eWLC") or ((self.model == "ebouchiat")):
+        if (self.model == "odijk") or (self.model == "extWLC") or (self.model == "extbouchiat"):
             self.fmodel.set_param_hint('S', value=params['S'], min=params['S_lower'], max=params['S_upper'])
 
         # Create parameters
@@ -112,8 +114,8 @@ class WormLikeChain:
                 if self.model == "odijk":
                     self.result = self.fmodel.fit(d, self.fparams, F=F, method=method)
                     Lc, Lp, S, Chisqr = self.result.params['Lc'].value, self.result.params['Lp'].value, self.result.params['S'].value, self.result.chisqr
-                elif (self.model == "eWLC") or (self.model == "ebouchiat"):
-                    self.result = self.fmodel.fit(F, self.fparams, fdata=data, method=method)
+                elif (self.model == "extWLC") or (self.model == "extbouchiat"):
+                    self.result = lmfit.minimize(self.resfunc, self.fparams, args=(F, d))
                     Lc, Lp, S, Chisqr = self.result.params['Lc'].value, self.result.params['Lp'].value, self.result.params['S'].value, self.result.chisqr                   
                 else:
                     self.result = self.fmodel.fit(F, self.fparams, d=d, method=method)
@@ -139,8 +141,11 @@ class WormLikeChain:
                     # print('Final Lc, Lp, S values within filtering bounds')
                     df_full = pd.concat((df_full, df_res), ignore_index=True)
 
-                # Update Lp and iter
+                # Update Lp, Lc, S (conditional) and iter
                 self.fparams["Lp"].set(Lp)
+                self.fparams["Lc"].set(Lc)
+                if (self.model == "odijk") or (self.model == "extWLC") or (self.model == "extbouchiat"):
+                    self.fparams["S"].set(S)
                 i += 1
 
                 # Update the progress bar
@@ -184,15 +189,19 @@ class WormLikeChain:
         # Plot best fit
         if self.model == "odijk":
             ax.plot(self.result.best_fit, F, c = 'red', lw = 2.5, label=self.model)
+        elif (self.model == "extbouchiat") or (self.model == "extWLC"):
+            ax.plot(d, self.func(self.fparams, F, d), label=self.model)
         else:
-            # self.result = self.fmodel.fit(F, self.fparams, d=d)
             ax.plot(d, self.result.best_fit, c = 'red', lw = 2.5, label=self.model)
         plt.legend()
         plt.show()
 
     def stats(self):
         """Show fitting results."""
-        print(self.result.fit_report())
+        if hasattr(self.result, "fit_report"):
+            print(self.result.fit_report())
+        else:
+            self.result.params.pretty_print()
     
     def plot_residuals(self, data : tuple):
         """Show residuals as a function of force or distance.
@@ -205,13 +214,6 @@ class WormLikeChain:
         
         # Save data
         d, F = data
-
-        # Determine nice limits by hand
-        def bins(x, y):
-            binwidth = 0.25
-            xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
-            lim = (int(xymax/binwidth) + 1) * binwidth
-            return np.arange(-lim, lim + binwidth, binwidth)
 
         # Create figure
         fig, axs = plt.subplots(1, 2, figsize=(7.5, 5), width_ratios=(4, 1), sharey = True, dpi=300)
