@@ -115,7 +115,7 @@ class WormLikeChain:
                     self.result = self.fmodel.fit(d, self.fparams, F=F, method=method)
                     Lc, Lp, S, Chisqr = self.result.params['Lc'].value, self.result.params['Lp'].value, self.result.params['S'].value, self.result.chisqr
                 elif (self.model == "extWLC") or (self.model == "extbouchiat"):
-                    self.result = lmfit.minimize(self.resfunc, self.fparams, args=(F, d))
+                    self.result = lmfit.minimize(self.resfunc, self.fparams, args=(F, d), method=method)
                     Lc, Lp, S, Chisqr = self.result.params['Lc'].value, self.result.params['Lp'].value, self.result.params['S'].value, self.result.chisqr                   
                 else:
                     self.result = self.fmodel.fit(F, self.fparams, d=d, method=method)
